@@ -1,0 +1,102 @@
+# FAQ Chatbot using Tkinter + NLTK + Cosine Similarity
+
+import tkinter as tk
+from tkinter import scrolledtext
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Download NLTK data (first time only)
+nltk.download('punkt')
+nltk.download('stopwords')
+
+# ---------------- FAQ Data ----------------
+faq_data = {
+    "What is Python?":
+        "Python is a high-level programming language used for web development, AI, and data science.",
+
+    "Who developed Python?":
+        "Python was developed by Guido van Rossum in 1991.",
+
+    "What is Tkinter?":
+        "Tkinter is the standard GUI library for Python used to create desktop applications.",
+
+    "What is machine learning?":
+        "Machine learning is a branch of AI that enables computers to learn from data.",
+
+    "What is NLP?":
+        "NLP stands for Natural Language Processing, which helps computers understand human language.",
+
+    "What is AI?":
+        "Artificial Intelligence is the simulation of human intelligence in machines."
+}
+
+questions = list(faq_data.keys())
+
+# ---------------- Text Preprocessing ----------------
+stop_words = set(stopwords.words('english'))
+
+def preprocess(text):
+    tokens = word_tokenize(text.lower())
+    words = [word for word in tokens if word.isalnum() and word not in stop_words]
+    return " ".join(words)
+
+processed_questions = [preprocess(q) for q in questions]
+
+# ---------------- Chatbot Function ----------------
+def get_response(user_input):
+    user_processed = preprocess(user_input)
+
+    vectorizer = TfidfVectorizer()
+    vectors = vectorizer.fit_transform(processed_questions + [user_processed])
+
+    similarity = cosine_similarity(vectors[-1], vectors[:-1])
+    index = similarity.argmax()
+    score = similarity[0][index]
+
+    if score > 0.2:
+        return faq_data[questions[index]]
+    else:
+        return "Sorry, I don't understand your question."
+
+# ---------------- Send Message ----------------
+def send_message():
+    user_text = entry_box.get()
+
+    if user_text.strip() == "":
+        return
+
+    chat_area.config(state=tk.NORMAL)
+    chat_area.insert(tk.END, "You: " + user_text + "\n")
+
+    response = get_response(user_text)
+    chat_area.insert(tk.END, "Bot: " + response + "\n\n")
+
+    chat_area.config(state=tk.DISABLED)
+    entry_box.delete(0, tk.END)
+
+# ---------------- GUI ----------------
+root = tk.Tk()
+root.title("FAQ Chatbot")
+root.geometry("600x500")
+root.configure(bg="#F0F0F0")
+
+title = tk.Label(root, text="FAQ Chatbot", font=("Arial", 16, "bold"), bg="#F0F0F0")
+title.pack(pady=10)
+
+chat_area = scrolledtext.ScrolledText(root, width=70, height=20, state=tk.DISABLED)
+chat_area.pack(padx=10, pady=10)
+
+frame = tk.Frame(root)
+frame.pack(pady=10)
+
+entry_box = tk.Entry(frame, width=50, font=("Arial", 12))
+entry_box.pack(side=tk.LEFT, padx=5)
+
+send_button = tk.Button(frame, text="Send", command=send_message,
+                        bg="blue", fg="white", font=("Arial", 11, "bold"))
+send_button.pack(side=tk.LEFT)
+
+root.mainloop()
